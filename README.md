@@ -35,6 +35,12 @@ It can also be built from the included Dockerfile.
 docker build -t debezium-connect -f debezium.Dockerfile .
 ```
 
+### Create volume for PostgreSQL
+
+```
+docker volume create postgresdata
+```
+
 ### Bring up the entire environment
 
 ```
@@ -47,9 +53,11 @@ We will bring up a container with a psql command line, mount our local data
 files inside, create a database called `students`, and load the data on
 students' chance of admission into the `admission` table.
 
+> To load data is used the `copy` command. Replace the path of files to be loaded according to your filesystem (Linux or Windows).
+
 ```
-docker run -it --rm --network=postgres-kafka-demo_default \
-         -v $PWD:/home/data/ \
+docker run -it --rm --network=postgres-kafka-connect_default \
+         -v postgresdata:/var/lib/postgresql/data \
          postgres:11.0 psql -h postgres -U postgres
 ```
 
@@ -117,7 +125,7 @@ and listing the available topics:
 Bring up a KSQL server command line client as a container:
 
 ```
-docker run --network postgres-kafka-demo_default \
+docker run --network postgres-kafka-connect_default \
            --interactive --tty --rm \
            confluentinc/cp-ksql-cli:latest \
            http://ksql-server:8088
@@ -183,10 +191,10 @@ and another table calculating the average chance of admission for
 students with and without research experience:
 
 ```
-CREATE TABLE research_ave_boost AS \
-     SELECT research, SUM(admit_chance)/COUNT(admit_chance) as ave_chance \
+CREATE TABLE research_ave_boost \
+     WITH (KAFKA_TOPIC='research_ave_boost', VALUE_FORMAT='delimited', PARTITION_BY='research') \
+     AS SELECT research, SUM(admit_chance)/COUNT(admit_chance) as ave_chance \
      FROM research_boost \
-     WITH (KAFKA_TOPIC='research_ave_boost', VALUE_FORMAT='delimited', KEY='research') \
      GROUP BY research;
 ```
 
