@@ -29,7 +29,7 @@ The debezium connect image used here needs some additional packages, so I've
 built a [debezium connect image](https://cloud.docker.com/repository/docker/mtpatter/debezium-connect) that I've made available on DockerHub.
 It can also be built from the included Dockerfile.
 
-### Build the connect image (optional)
+### Build the connect image
 
 ```
 docker build -t debezium-connect -f debezium.Dockerfile .
@@ -153,21 +153,22 @@ WITH (KAFKA_TOPIC='dbserver1.public.admission', VALUE_FORMAT='AVRO');
 CREATE STREAM admission_src_rekey WITH (PARTITIONS=1) AS \
 SELECT * FROM admission_src PARTITION BY student_id;
 
-SHOW STREAMS;
-
-CREATE TABLE admission (student_id INTEGER, gre INTEGER, toefl INTEGER, cpga DOUBLE, admit_chance DOUBLE)\
-WITH (KAFKA_TOPIC='ADMISSION_SRC_REKEY', VALUE_FORMAT='AVRO', KEY='student_id');
-
-SHOW TABLES;
-
 CREATE STREAM research_src (student_id INTEGER, rating INTEGER, research INTEGER)\
 WITH (KAFKA_TOPIC='dbserver1.public.research', VALUE_FORMAT='AVRO');
 
 CREATE STREAM research_src_rekey WITH (PARTITIONS=1) AS \
 SELECT * FROM research_src PARTITION BY student_id;
 
+SHOW STREAMS;
+
+CREATE TABLE admission (student_id INTEGER, gre INTEGER, toefl INTEGER, cpga DOUBLE, admit_chance DOUBLE)\
+WITH (KAFKA_TOPIC='ADMISSION_SRC_REKEY', VALUE_FORMAT='AVRO', KEY='student_id');
+
 CREATE TABLE research (student_id INTEGER, rating INTEGER, research INTEGER)\
 WITH (KAFKA_TOPIC='RESEARCH_SRC_REKEY', VALUE_FORMAT='AVRO', KEY='student_id');
+
+SHOW TABLES;
+
 ```
 
 Currently KSQL uses uppercase casing convention for stream, table, and field
@@ -192,7 +193,7 @@ students with and without research experience:
 
 ```
 CREATE TABLE research_ave_boost \
-     WITH (KAFKA_TOPIC='research_ave_boost', VALUE_FORMAT='delimited', PARTITION_BY='research') \
+     WITH (KAFKA_TOPIC='research_ave_boost', VALUE_FORMAT='AVRO', PARTITION_BY='research') \
      AS SELECT research, SUM(admit_chance)/COUNT(admit_chance) as ave_chance \
      FROM research_boost \
      GROUP BY research;
