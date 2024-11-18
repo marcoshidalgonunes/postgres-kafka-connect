@@ -1,17 +1,20 @@
 {"name": "postgres-sink",
-  "config": {"connector.class":"io.confluent.connect.jdbc.JdbcSinkConnector",
+  "config": {"connector.class":"io.debezium.connector.jdbc.JdbcSinkConnector",
     "tasks.max":"1",
     "topics": "research_ave_boost",
     "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "key.converter.schemas.enable": "false", 
     "value.converter": "io.confluent.connect.avro.AvroConverter",
-    "value.converter.schema.registry.url": "http://schema-registry:8081",
-    "connection.url": "jdbc:postgresql://postgres:5432/students?user=postgres&password=postgres",
-    "key.converter.schemas.enable": "false",
     "value.converter.schemas.enable": "true",
+    "value.converter.schema.registry.url": "http://schema-registry:8081",
+    "connection.url": "jdbc:postgresql://postgres:5432/students",
+    "connection.username": "postgres",
+    "connection.password": "postgres",
     "auto.create": "true",
     "auto.evolve": "true",
     "insert.mode": "upsert",
-    "pk.fields": "RESEARCH",
-    "pk.mode": "record_key"
+    "primary.key.fields": "RESEARCH",
+    "primary.key.mode": "record_value",
+    "schema.evolution": "basic"
   }
 }

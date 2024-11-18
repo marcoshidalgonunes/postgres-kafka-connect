@@ -10,12 +10,17 @@
     "database.whitelist": "students",
     "database.history.kafka.bootstrap.servers": "kafka:9092",
     "database.history.kafka.topic": "schema-changes.students",
-    "key.converter": "org.apache.kafka.connect.storage.StringConverter",
+    "key.converter": "io.confluent.connect.avro.AvroConverter",
     "value.converter": "io.confluent.connect.avro.AvroConverter",
-    "key.converter.schemas.enable": "false",
+    "key.converter.schemas.enable": "true",
+    "key.converter.schema.registry.url": "http://schema-registry:8081",
     "value.converter.schemas.enable": "true",
     "value.converter.schema.registry.url": "http://schema-registry:8081",
+    "topic.prefix": "dbserver1",
+    "topic.creation.enable": "true",
+    "topic.creation.default.replication.factor": -1,
+    "topic.creation.default.partitions": -1,
     "transforms": "unwrap",
-    "transforms.unwrap.type": "io.debezium.transforms.UnwrapFromEnvelope"
+    "transforms.unwrap.type": "io.debezium.transforms.ExtractNewRecordState"
   }
 }

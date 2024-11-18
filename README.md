@@ -20,16 +20,15 @@ The following technologies are used through Docker containers:
 * Zookeeper, Kafka's best friend
 * KSQL server, which we will use to create real-time updating tables
 * Kafka's schema registry, needed to use the Avro data format
-* Kafka Connect, pulled from [debezium](https://debezium.io/), which will
+* Kafka Connect, pulled from [Debezium](https://debezium.io/), which will
 source and sink data back and forth through Kafka
-* Postgres, pulled from debezium, tailored for use with Connect
+* Postgres, pulled from [Debezium](https://debezium.io/), tailored for use with Connect
 
-Most of the containers are pulled directly from official Docker Hub images.
-The debezium connect image used here needs some additional packages, so I've
-built a [debezium connect image](https://cloud.docker.com/repository/docker/mtpatter/debezium-connect) that I've made available on DockerHub.
-It can also be built from the included Dockerfile.
+The containers are pulled directly from official Docker Hub images.
+The Debezium Connect image used here needs some additional packages, so it must be built from the 
+included Dockerfile. The same applies for Debezium Postgres.
 
-### Build the connect image
+### Build the debezium images for Kafka Connect and Postgres
 
 ```
 docker build -t debezium-connect -f debezium.Dockerfile .
@@ -58,7 +57,7 @@ students' chance of admission into the `admission` table.
 ```
 docker run -it --rm --network=postgres-kafka-connect_default \
          -v postgresdata:/var/lib/postgresql/data \
-         postgres:11.0 psql -h postgres -U postgres
+         debezium-postgres psql -h postgres -U postgres
 ```
 
 Password = postgres
@@ -90,9 +89,9 @@ PRIMARY KEY (student_id));
 \copy research FROM '/home/data/research_1.csv' DELIMITER ',' CSV HEADER
 ```
 
-## Connect Postgres database as a source to Kafka
+## Use Postgres database as a source to Kafka and prepaa data to sink.
 
-The postgres-source.json file contains the configuration settings needed to
+The `postgres-source.json` file contains the configuration settings needed to
 sink all of the students database to Kafka.
 
 ```
@@ -100,7 +99,7 @@ curl -X POST -H "Accept:application/json" -H "Content-Type: application/json" \
       --data @postgres-source.json http://localhost:8083/connectors
 ```
 
-The connector 'postgres-source' should show up when curling for the list
+The connector `postgres-source` should show up when curling for the list
 of existing connectors:
 
 ```
@@ -120,7 +119,7 @@ and listing the available topics:
 /usr/bin/kafka-topics --list --zookeeper zookeeper:2181
 ```
 
-## Create tables in KSQL
+### Create tables in KSQL
 
 Bring up a KSQL server command line client as a container:
 
@@ -141,12 +140,25 @@ set 'auto.offset.reset'='earliest';
 
 ### Mirror Postgres tables
 
-The Postgres table topics will be visible in KSQL, and we will create
-KSQL streams to auto update KSQL tables mirroring the Postgres tables:
+The Postgres table topics should be visible in KSQL:
 
 ```
 SHOW TOPICS;
 
+ Kafka Topic                | Partitions | Partition Replicas
+--------------------------------------------------------------
+ _schemas                   | 1          | 1
+ connect-status             | 5          | 1
+ dbserver1.public.admission | 1          | 1
+ dbserver1.public.research  | 1          | 1
+ my-connect-configs         | 1          | 1
+ my-connect-offsets         | 25         | 1
+--------------------------------------------------------------
+```
+
+We will create KSQL streams to auto update KSQL tables mirroring the Postgres tables:
+
+```
 CREATE STREAM admission_src (student_id INTEGER, gre INTEGER, toefl INTEGER, cpga DOUBLE, admit_chance DOUBLE)\
 WITH (KAFKA_TOPIC='dbserver1.public.admission', VALUE_FORMAT='AVRO');
 
@@ -161,18 +173,26 @@ SELECT * FROM research_src PARTITION BY student_id;
 
 SHOW STREAMS;
 
+ Stream Name         | Kafka Topic                | Format
+-----------------------------------------------------------
+ ADMISSION_SRC       | dbserver1.public.admission | AVRO
+ ADMISSION_SRC_REKEY | ADMISSION_SRC_REKEY        | AVRO
+ RESEARCH_SRC        | dbserver1.public.research  | AVRO
+ RESEARCH_SRC_REKEY  | RESEARCH_SRC_REKEY         | AVRO
+-----------------------------------------------------------
+```
+
+Now we will create tables from Postgres topics. Currently KSQL uses uppercase casing convention 
+for stream, table, and field names.
+
+
+```
 CREATE TABLE admission (student_id INTEGER, gre INTEGER, toefl INTEGER, cpga DOUBLE, admit_chance DOUBLE)\
 WITH (KAFKA_TOPIC='ADMISSION_SRC_REKEY', VALUE_FORMAT='AVRO', KEY='student_id');
 
 CREATE TABLE research (student_id INTEGER, rating INTEGER, research INTEGER)\
 WITH (KAFKA_TOPIC='RESEARCH_SRC_REKEY', VALUE_FORMAT='AVRO', KEY='student_id');
-
-SHOW TABLES;
-
 ```
-
-Currently KSQL uses uppercase casing convention for stream, table, and field
-names.
 
 ### Create downstream tables
 
@@ -193,15 +213,29 @@ students with and without research experience:
 
 ```
 CREATE TABLE research_ave_boost \
-     WITH (KAFKA_TOPIC='research_ave_boost', VALUE_FORMAT='AVRO', PARTITION_BY='research') \
+     WITH (KAFKA_TOPIC='research_ave_boost', VALUE_FORMAT='AVRO') \
      AS SELECT research, SUM(admit_chance)/COUNT(admit_chance) as ave_chance \
      FROM research_boost \
      GROUP BY research;
 ```
 
+```
+SHOW TABLES;
+
+ Table Name         | Kafka Topic         | Format | Windowed
+--------------------------------------------------------------
+ ADMISSION          | ADMISSION_SRC_REKEY | AVRO   | false
+ RESEARCH           | RESEARCH_SRC_REKEY  | AVRO   | false
+ RESEARCH_AVE_BOOST | research_ave_boost  | AVRO   | false
+ RESEARCH_BOOST     | RESEARCH_BOOST      | AVRO   | false
+--------------------------------------------------------------
+```
+
+Now we can bring down the KSQL server command line client with the command `exit`.
+
 ## Add a connector to sink a KSQL table back to Postgres
 
-The postgres-sink.json configuration file will create a RESEARCH_AVE_BOOST
+The `postgres-sink.json` configuration file will create the `research_ave_boost`
 table and send the data back to Postgres.
 
 ```
@@ -209,18 +243,25 @@ curl -X POST -H "Accept:application/json" -H "Content-Type: application/json" \
       --data @postgres-sink.json http://localhost:8083/connectors
 ```
 
-## Update the source Postgres tables and watch the Postgres sink table update
-
-The RESEARCH_AVE_BOOST table should now be available in Postgres to query:
+Bring up once again the container with a psql command line:
 
 ```
-SELECT "AVE_CHANCE" FROM "RESEARCH_AVE_BOOST"
-  WHERE cast("RESEARCH" as INT)=0;
+docker run -it --rm --network=postgres-kafka-connect_default \
+         -v postgresdata:/var/lib/postgresql/data \
+         debezium-postgres psql -h postgres -U postgres
+```
+
+Password = postgres
+
+At the command line:
+
+```
+SELECT ave_chance FROM research_ave_boost
+  WHERE CAST(research as INT)=0;
 ```
 
 With these data the average admission chance will be 65.19%.
 
-Note that the tables are forced to upper case and case sensitive.
 The research field needs to be cast because it has been typed as text
 instead of integer, which may be a bug in KSQL or Connect.
 
