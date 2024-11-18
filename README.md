@@ -76,7 +76,7 @@ CREATE TABLE admission
 (student_id INTEGER, gre INTEGER, toefl INTEGER, cpga DOUBLE PRECISION, admit_chance DOUBLE PRECISION,
 CONSTRAINT student_id_pk PRIMARY KEY (student_id));
 
-\copy admission FROM '/home/data/admit_1.csv' DELIMITER ',' CSV HEADER
+\copy admission FROM 'data/admit_1.csv' DELIMITER ',' CSV HEADER
 ```
 
 Load the research data table with:
@@ -86,7 +86,7 @@ CREATE TABLE research
 (student_id INTEGER, rating INTEGER, research INTEGER,
 PRIMARY KEY (student_id));
 
-\copy research FROM '/home/data/research_1.csv' DELIMITER ',' CSV HEADER
+\copy research FROM 'data/research_1.csv' DELIMITER ',' CSV HEADER
 ```
 
 ## Use Postgres database as a source to Kafka and prepaa data to sink.
@@ -268,8 +268,8 @@ instead of integer, which may be a bug in KSQL or Connect.
 Add some new data to the admission and research tables in Postgres:
 
 ```
-\copy admission FROM '/home/data/admit_2.csv' DELIMITER ',' CSV HEADER
-\copy research FROM '/home/data/research_2.csv' DELIMITER ',' CSV HEADER
+\copy admission FROM 'data/admit_2.csv' DELIMITER ',' CSV HEADER
+\copy research FROM 'data/research_2.csv' DELIMITER ',' CSV HEADER
 ```
 
 With the same query above on the RESEARCH_AVE_BOOST table, the
