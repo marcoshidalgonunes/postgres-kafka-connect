@@ -32,6 +32,8 @@ included Dockerfile. The same applies for Debezium Postgres.
 
 ```
 docker build -t debezium-connect -f debezium.Dockerfile .
+
+docker build -t debezium-postgres -f postgres.Dockerfile .
 ```
 
 ### Create volume for PostgreSQL
