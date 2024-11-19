@@ -9,9 +9,10 @@ It is based in [Maria Patterson demo](https://github.com/mtpatter/postgres-kafka
 The data used here was originally taken from the
 [Graduate Admissions](https://www.kaggle.com/mohansacharya/graduate-admissions)
 open dataset available on Kaggle.
-The admit csv files are records of students and test scores with their chances
-of college admission.  The research csv files contain a flag per student
+The admit CSV files are records of students and test scores with their chances
+of college admission.  The research CSV files contain a flag per student
 for whether or not they have research experience.
+These CSV files are in `data` folder.
 
 ## Components
 
@@ -36,7 +37,7 @@ docker build -t debezium-connect -f debezium.Dockerfile .
 docker build -t debezium-postgres -f postgres.Dockerfile .
 ```
 
-### Create volume for PostgreSQL
+### Create volume for Postgres
 
 ```
 docker volume create postgresdata
@@ -61,8 +62,7 @@ docker run -it --rm --network=postgres-kafka-connect_default \
          -v postgresdata:/var/lib/postgresql/data \
          debezium-postgres psql -h postgres -U postgres
 ```
-
-Password = postgres
+Password for user postgres: postgres
 
 At the command line:
 
@@ -90,6 +90,8 @@ PRIMARY KEY (student_id));
 
 \copy research FROM 'data/research_1.csv' DELIMITER ',' CSV HEADER
 ```
+
+We can disconnect from Postgres container with the command `exit`.
 
 ## Use Postgres database as a source to Kafka and prepaa data to sink.
 
@@ -187,7 +189,6 @@ SHOW STREAMS;
 Now we will create tables from Postgres topics. Currently KSQL uses uppercase casing convention 
 for stream, table, and field names.
 
-
 ```
 CREATE TABLE admission (student_id INTEGER, gre INTEGER, toefl INTEGER, cpga DOUBLE, admit_chance DOUBLE)\
 WITH (KAFKA_TOPIC='ADMISSION_SRC_REKEY', VALUE_FORMAT='AVRO', KEY='student_id');
@@ -252,12 +253,12 @@ docker run -it --rm --network=postgres-kafka-connect_default \
          -v postgresdata:/var/lib/postgresql/data \
          debezium-postgres psql -h postgres -U postgres
 ```
-
-Password = postgres
+Password for user postgres: postgres
 
 At the command line:
 
 ```
+\connect students;
 SELECT ave_chance FROM research_ave_boost
   WHERE CAST(research as INT)=0;
 ```

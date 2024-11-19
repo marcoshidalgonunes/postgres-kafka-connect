@@ -12,7 +12,5 @@ RUN cd /kafka/libs && curl -sO https://jdbc.postgresql.org/download/postgresql-4
 RUN mkdir $KAFKA_CONNECT_JDBC_DIR && cd $KAFKA_CONNECT_JDBC_DIR &&\
 	curl -sO http://packages.confluent.io/maven/io/confluent/kafka-connect-jdbc/5.1.2/kafka-connect-jdbc-10.8.0.jar
 
-# Deploy Avro Converter
-#RUN curl -O https://packages.confluent.io/archive/7.7/confluentinc-kafka-connect-avro-converter-7.7.1.tar.gz
-#RUN tar xzf confluentinc-kafka-connect-avro-converter-7.7.1.tar.gz --directory /kafka/libs
+# Deploy Debezium and Confluent Avro Converter
 COPY libs/*.jar /kafka/libs
