@@ -1,6 +1,6 @@
 # postgres-kafka-connect
 
-Demo of how to stream tables from Postgres to Kafka/KSQL back to Postgres with custom Kakfka Connector.
+Demo of how to stream tables from Postgres to Kafka/KSQL back to Postgres using source and sink Kafka connectors.
 
 It is based in [Maria Patterson demo](https://github.com/mtpatter/postgres-kafka-demo/tree/master) of how to stream tables from Postgres to Kafka/KSQL back to Postgres, with some adjustments for PostgreSQL data persistence and connect to Kafka with external tools.
 
@@ -46,7 +46,7 @@ docker volume create postgresdata
 ### Bring up the entire environment
 
 ```
-docker-compose up -d
+docker-compose up -d --build
 ```
 
 ## Loading data into Postgres
@@ -93,7 +93,7 @@ PRIMARY KEY (student_id));
 
 We can disconnect from Postgres container with the command `exit`.
 
-## Use Postgres database as a source to Kafka and prepaa data to sink.
+## Use Postgres database as a source to Kafka and prepare data to sink.
 
 The `postgres-source.json` file contains the configuration settings needed to
 sink all of the students database to Kafka.
@@ -265,14 +265,32 @@ SELECT ave_chance FROM research_ave_boost
 
 With these data the average admission chance will be 65.19%.
 
-The research field needs to be cast because it has been typed as text
-instead of integer, which may be a bug in KSQL or Connect.
+### Update database to refresh chance
 
-Add some new data to the admission and research tables in Postgres:
+Bring back a container with a psql command line to add some new data to the admission and research tables in Postgres.
+
+> To load data is used the `copy` command. Replace the path of files to be loaded according to your filesystem (Linux or Windows).
+
+```
+docker run -it --rm --network=postgres-kafka-connect_default \
+         -v postgresdata:/var/lib/postgresql/data \
+         debezium-postgres psql -h postgres -U postgres
+```
+Password for user postgres: postgres
+
+At the command line:
 
 ```
 \copy admission FROM 'data/admit_2.csv' DELIMITER ',' CSV HEADER
 \copy research FROM 'data/research_2.csv' DELIMITER ',' CSV HEADER
+```
+
+Stop and Start the environment to rerun connectors with new data.
+
+```
+docker-compose down
+
+docker-compose up -d
 ```
 
 With the same query above on the RESEARCH_AVE_BOOST table, the
