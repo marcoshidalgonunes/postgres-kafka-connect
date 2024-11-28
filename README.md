@@ -46,7 +46,7 @@ docker volume create postgresdata
 ### Bring up the entire environment
 
 ```
-docker-compose up -d --build
+docker compose up -d --build
 ```
 
 ## Loading data into Postgres
@@ -120,7 +120,7 @@ docker exec -it <kafka-container-id> /bin/bash
 and listing the available topics:
 
 ```
-/usr/bin/kafka-topics --list --zookeeper zookeeper:2181
+kafka-topics --list --bootstrap-server kafka:8082
 ```
 
 ### Create tables in KSQL
@@ -288,9 +288,9 @@ At the command line:
 Stop and Start the environment to rerun connectors with new data.
 
 ```
-docker-compose down
+docker compose down
 
-docker-compose up -d
+docker compose up -d
 ```
 
 With the same query above on the RESEARCH_AVE_BOOST table, the
