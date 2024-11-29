@@ -51,18 +51,16 @@ docker compose up -d --build
 
 ## Loading data into Postgres
 
-We will bring up a container with a psql command line, mount our local data
+We will copy CSV to postgres container following by execute psql command line, mount our local data
 files inside, create a database called `students`, and load the data on
 students' chance of admission into the `admission` table.
 
-> To load data is used the `copy` command. Replace the path of files to be loaded according to your filesystem (Linux or Windows).
+```
+docker cp data/admit_1.csv postgres:/tmp
+docker cp data/research_1.csv postgres:/tmp
 
+docker exec -it postgres psql -U postgres
 ```
-docker run -it --rm --network=postgres-kafka-connect_default \
-         -v postgresdata:/var/lib/postgresql/data \
-         debezium-postgres psql -h postgres -U postgres
-```
-Password for user postgres: postgres
 
 At the command line:
 
@@ -78,7 +76,7 @@ CREATE TABLE admission
 (student_id INTEGER, gre INTEGER, toefl INTEGER, cpga DOUBLE PRECISION, admit_chance DOUBLE PRECISION,
 CONSTRAINT student_id_pk PRIMARY KEY (student_id));
 
-\copy admission FROM 'data/admit_1.csv' DELIMITER ',' CSV HEADER
+\copy admission FROM '/tmp/admit_1.csv' DELIMITER ',' CSV HEADER
 ```
 
 Load the research data table with:
@@ -88,7 +86,7 @@ CREATE TABLE research
 (student_id INTEGER, rating INTEGER, research INTEGER,
 PRIMARY KEY (student_id));
 
-\copy research FROM 'data/research_1.csv' DELIMITER ',' CSV HEADER
+\copy research FROM '/tmp/research_1.csv' DELIMITER ',' CSV HEADER
 ```
 
 We can disconnect from Postgres container with the command `exit`.
@@ -114,7 +112,7 @@ The two tables in the `students` database will now show up as topics in Kafka.
 You can check this by entering the Kafka container:
 
 ```
-docker exec -it <kafka-container-id> /bin/bash
+docker exec -it kafka /bin/bash
 ```
 
 and listing the available topics:
@@ -122,6 +120,8 @@ and listing the available topics:
 ```
 kafka-topics --list --bootstrap-server kafka:8082
 ```
+
+We can disconnect from Kafka container with the command `exit`.
 
 ### Create tables in KSQL
 
@@ -249,11 +249,8 @@ curl -X POST -H "Accept:application/json" -H "Content-Type: application/json" \
 Bring up once again the container with a psql command line:
 
 ```
-docker run -it --rm --network=postgres-kafka-connect_default \
-         -v postgresdata:/var/lib/postgresql/data \
-         debezium-postgres psql -h postgres -U postgres
+docker exec -it postgres psql -U postgres
 ```
-Password for user postgres: postgres
 
 At the command line:
 
@@ -267,23 +264,23 @@ With these data the average admission chance will be 65.19%.
 
 ### Update database to refresh chance
 
-Bring back a container with a psql command line to add some new data to the admission and research tables in Postgres.
-
-> To load data is used the `copy` command. Replace the path of files to be loaded according to your filesystem (Linux or Windows).
+We will copy more CSV data to postgres container following by execute psql command line.
 
 ```
-docker run -it --rm --network=postgres-kafka-connect_default \
-         -v postgresdata:/var/lib/postgresql/data \
-         debezium-postgres psql -h postgres -U postgres
-```
-Password for user postgres: postgres
+docker cp data/admit_2.csv postgres:/tmp
+docker cp data/research_2.csv postgres:/tmp
 
+docker exec -it postgres psql -U postgres
+```
 At the command line:
 
 ```
-\copy admission FROM 'data/admit_2.csv' DELIMITER ',' CSV HEADER
-\copy research FROM 'data/research_2.csv' DELIMITER ',' CSV HEADER
+\connect students;
+\copy admission FROM '/tmp/admit_2.csv' DELIMITER ',' CSV HEADER
+\copy research FROM '/tmp/research_2.csv' DELIMITER ',' CSV HEADER
 ```
+
+Discoonect from container with `exit`command.
 
 Stop and Start the environment to rerun connectors with new data.
 

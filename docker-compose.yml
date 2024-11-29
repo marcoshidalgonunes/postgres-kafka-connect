@@ -2,6 +2,7 @@ services:
 
   postgres:
     image: debezium-postgres
+    container_name: postgres
     environment:
       POSTGRES_PASSWORD: postgres
     command: postgres -c config_file=/home/config/postgresql.conf
@@ -19,6 +20,7 @@ services:
 
   kafka:
     image: confluentinc/cp-kafka
+    container_name: kafka
     depends_on:
       - zookeeper
     ports:
