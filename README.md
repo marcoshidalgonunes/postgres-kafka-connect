@@ -118,7 +118,7 @@ docker exec -it kafka /bin/bash
 and listing the available topics:
 
 ```
-kafka-topics --list --bootstrap-server kafka:8082
+kafka-topics --list --bootstrap-server localhost:9092
 ```
 
 We can disconnect from Kafka container with the command `exit`.
